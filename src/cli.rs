@@ -19,6 +19,7 @@ pub struct Args{
     pub method: Method,
     pub format: OutputFormat,
     pub verbose: bool,
+    pub preview: bool,
 }
 
 impl Default for Args{
@@ -28,6 +29,7 @@ impl Default for Args{
             method: Method::AreaAverage,
             format: OutputFormat::HEX,
             verbose: false,
+            preview: false,
         }
     }
 }
@@ -120,6 +122,10 @@ impl Args{
                 config.verbose = true;
                 i + 1
             }
+            "-p" | "--preview" => {
+                config.preview = true;
+                i + 1
+            }
             _ => {
                 Self::usage(program);
                 eprintln!("Error: unknown flag '{}'", arg);
@@ -130,10 +136,11 @@ impl Args{
 
     fn usage(program: &str) {
         eprintln!("Usage {program} [-s][-m][-f][-v] <path_to_image>");
-        eprintln!("Subcommands:");
+        eprintln!("Arguments:");
         eprintln!("     -s | --saturation   <float>");
         eprintln!("     -m | --method       [area_average(aa) / kmeans(km)]");
         eprintln!("     -f | --format       [rgb/hex]");
-        eprintln!("     -v | --verbose      ");
+        eprintln!("     -v | --verbose      print colors to stdout");
+        eprintln!("     -p | --preview      if passed, won't generate templates");
     }
 }

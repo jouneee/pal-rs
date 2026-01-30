@@ -137,10 +137,12 @@ fn main() -> Result<(), ()> {
         });
     }
     
-    let _ = process_template_files(config_path, templates_cache_path, &colorscheme, conf.format).map_err(|e| {
-        eprintln!("Error: could not process template files; '{}'", e);
-        exit(1)
-    });
+    if !conf.preview {
+        let _ = process_template_files(config_path, templates_cache_path, &colorscheme, conf.format).map_err(|e| {
+            eprintln!("Error: could not process template files; '{}'", e);
+            exit(1)
+        });
+    }
 
     if conf.verbose {
         match conf.format {
