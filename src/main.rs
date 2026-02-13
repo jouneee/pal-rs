@@ -12,7 +12,7 @@ use image::{ImageReader, ImageError, DynamicImage};
 mod colorscheme;
 mod cli;
 mod template;
-use crate::colorscheme::{Color, Colorscheme, aaverage_generate_colorscheme, kmeans_generate_colorscheme};
+use crate::colorscheme::{Color, Colorscheme, aaverage_generate_colorscheme, kmeans_generate_colorscheme, ansi_generate_colorscheme};
 use crate::cli::{Args, Method, OutputFormat};
 use crate::template::process_template_files;
 
@@ -30,6 +30,7 @@ fn hash_image_path(image_path: &Path, saturation: &f32, method: &Method, colorsc
     match method {
         Method::AreaAverage => 0u8.hash(&mut hasher),
         Method::KMeans      => 1u8.hash(&mut hasher),
+        Method::ANSI        => 2u8.hash(&mut hasher),
     }
 
     let cache_file_name = format!("{:x}.pal", hasher.finish());
@@ -129,7 +130,8 @@ fn main() -> Result<(), ()> {
         
         colorscheme = match conf.method {
             Method::AreaAverage => aaverage_generate_colorscheme(&img).with_saturation(conf.saturation),
-            Method::KMeans => kmeans_generate_colorscheme(&img).with_saturation(conf.saturation),
+            Method::KMeans      => kmeans_generate_colorscheme(&img).with_saturation(conf.saturation),
+            Method::ANSI        => ansi_generate_colorscheme(&img).with_saturation(conf.saturation),
         };
 
         let _ = write_scheme_cache(&hashed_image_path, &colorscheme).map_err(|_| {

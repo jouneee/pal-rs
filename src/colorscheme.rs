@@ -247,3 +247,64 @@ pub fn kmeans_generate_colorscheme(img: &DynamicImage) -> Colorscheme {
                          background: darkest, 
                          foreground: lightest }
 }
+
+pub fn ansi_generate_colorscheme(img: &DynamicImage) -> Colorscheme {
+    const DIVISOR:       usize = 32;
+    const SAMPLE_COUNT:  usize = 1024;
+
+    const ANSI_BASE: [(u8, u8, u8); 16] = [
+        (0x00, 0x00, 0x00), (0xcd, 0x00, 0x00), (0x00, 0xcd, 0x00), (0xcd, 0xcd, 0x00),
+        (0x00, 0x00, 0xee), (0xcd, 0x00, 0xcd), (0x00, 0xcd, 0xcd), (0xe5, 0xe5, 0xe5),
+        (0x7f, 0x7f, 0x7f), (0xff, 0x00, 0x00), (0x00, 0xff, 0x00), (0xff, 0xff, 0x00),
+        (0x5c, 0x5c, 0xff), (0xff, 0x00, 0xff), (0x00, 0xff, 0xff), (0xff, 0xff, 0xff),
+    ];
+
+    let w = img.width() as usize;
+    let h = img.height() as usize;
+    let mut samples: Vec<Color> = Vec::with_capacity(SAMPLE_COUNT);
+    
+    let step_x = (w / DIVISOR).max(1);
+    let step_y = (h / DIVISOR).max(1);
+    let mut darkest  = Color {r: 255, g: 255, b: 255, chroma: 0, luminance: 1.0};
+    let mut lightest = Color {r: 0, g: 0, b: 0, chroma: 0, luminance: 0.0};
+    
+    'pixels: for y in (0..h).step_by(step_y) {
+        for x in (0..w).step_by(step_x) {
+            if samples.len() >= SAMPLE_COUNT {
+                break 'pixels;
+            }
+           
+            let Some(c) = sample_4by4_area(img, x, y, w, h) else {
+                continue;
+            };
+            if c.luminance < darkest.luminance && c.luminance > 0.05  { darkest = c };
+            if c.luminance > lightest.luminance && c.luminance < 0.95 { lightest = c };
+
+            samples.push(c);
+        }
+    }
+
+    let mut palette = Vec::with_capacity(16);
+    
+    for &(base_r, base_g, base_b) in &ANSI_BASE {
+        let base = Color::from_rgba(Rgba([base_r, base_g, base_b, 255]));
+        let mut best_sample = &samples[0];
+        let mut best_dist = f32::MAX; 
+
+        for sample in &samples {
+            let dist = sample.distance_to(&base);
+            if dist < best_dist {
+                best_dist = dist;
+                best_sample = sample;
+            }
+        }
+        palette.push(*best_sample);
+    }
+
+    palette[0] = darkest;
+    palette[15] = lightest;
+
+    return Colorscheme { palette, 
+                         background: darkest, 
+                         foreground: lightest }
+}

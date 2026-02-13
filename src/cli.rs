@@ -6,6 +6,7 @@ use std::process::exit;
 pub enum Method {
     AreaAverage,
     KMeans,
+    ANSI,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -98,6 +99,7 @@ impl Args{
                 config.method = match next_arg().unwrap().as_str() {
                     "area_average" | "aa" => Method::AreaAverage,
                     "kmeans" | "km"       => Method::KMeans,
+                    "ansi" | "an"         => Method::ANSI,
                     _ => {
                         Self::usage(program);
                         eprintln!("Error: unknown method '{}'", next_arg().unwrap());
@@ -138,7 +140,7 @@ impl Args{
         eprintln!("Usage {program} [-s][-m][-f][-v] <path_to_image>");
         eprintln!("Arguments:");
         eprintln!("     -s | --saturation   <float>");
-        eprintln!("     -m | --method       [area_average(aa) / kmeans(km)]");
+        eprintln!("     -m | --method       [area_average(aa) / kmeans(km) / ansi(an)]");
         eprintln!("     -f | --format       [rgb/hex]");
         eprintln!("     -v | --verbose      print colors to stdout");
         eprintln!("     -p | --preview      if passed, won't generate templates");
