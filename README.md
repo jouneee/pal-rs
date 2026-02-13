@@ -16,8 +16,8 @@ Generated templates are placed in ~/.cache/pal/
 Syntax:
 
 Variables must start with @ and be surrounded with backticks: 
-- `@background`
-- `@foreground` 
-- `@color<1-16>`
+- ``@background``
+- ``@foreground`` 
+- ``@color<1-16>``
 
 Example templates are provided in examples folder.
