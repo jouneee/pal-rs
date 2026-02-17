@@ -36,18 +36,18 @@ impl Default for Args{
 }
 
 impl Args{
-    pub fn from_cli() -> (Args, PathBuf) {
+    pub fn from_cli() -> (Args, String) {
         let args: Vec<String> = env::args().collect();
         let program = &args[0];
 
         if args.len() < 2 {
             Self::usage(program);
-            eprintln!("Error: missing image path");
+            eprintln!("Error: missing image path or url");
             exit(1);
         }
 
         let mut config = Args::default();
-        let mut image_path = None;
+        let mut image_uri = None;
         let mut i = 1;
 
         while i < args.len() {
@@ -58,8 +58,8 @@ impl Args{
                 continue;
             }
 
-            if image_path.is_none() {
-                image_path = Some(arg.clone());
+            if image_uri.is_none() {
+                image_uri = Some(arg.clone());
                 i += 1;
                 continue;
             }
@@ -68,8 +68,7 @@ impl Args{
             exit(1);
         }
 
-        let image_path_buf = PathBuf::from(image_path.expect("Image path is set above"));
-        (config, image_path_buf)
+        (config, image_uri.unwrap())
     }
 
     fn parse_flag(arg: &str, args: &[String], i: usize, config: &mut Args, program: &str) -> usize {
@@ -137,7 +136,7 @@ impl Args{
     }
 
     fn usage(program: &str) {
-        eprintln!("Usage {program} [-s][-m][-f][-v] <path_to_image>");
+        eprintln!("Usage {program} [-s][-m][-f][-v] <path or url>");
         eprintln!("Arguments:");
         eprintln!("     -s | --saturation   <float>");
         eprintln!("     -m | --method       [area_average(aa) / kmeans(km) / ansi(an)]");

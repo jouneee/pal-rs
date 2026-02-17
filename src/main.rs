@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::hash::{Hash, Hasher};
 use std::process::exit;
 use std::time::UNIX_EPOCH;
+use std::io::Cursor;
 use image::Rgba;
 use image::{ImageReader, ImageError, DynamicImage};
 
@@ -16,11 +17,11 @@ use crate::colorscheme::{Color, Colorscheme, aaverage_generate_colorscheme, kmea
 use crate::cli::{Args, Method, OutputFormat};
 use crate::template::process_template_files;
 
-fn hash_image_path(image_path: &Path, saturation: &f32, method: &Method, colorschemes_cache_path: &Path) -> PathBuf {
+fn hash_image_uri(image_uri: &str, saturation: &f32, method: &Method, colorschemes_cache_path: &Path) -> PathBuf {
     let mut hasher = DefaultHasher::new();
-    image_path.as_os_str().hash(&mut hasher);
+    image_uri.hash(&mut hasher);
 
-    if let Ok(meta) = fs::metadata(image_path) {
+    if let Ok(meta) = fs::metadata(image_uri) {
         if let Ok(mtime) = meta.modified() {
             mtime.duration_since(UNIX_EPOCH).unwrap().as_secs().hash(&mut hasher);
         }
@@ -84,9 +85,30 @@ fn parse_hex_line(s: &str) -> Color {
     return Color::from_rgba(Rgba([r, g, b, 255]))
 }
 
-fn read_image(image_path: &Path) -> Result<DynamicImage, ImageError> {
-    let img = ImageReader::open(image_path)?.decode()?;
-    return Ok(img)
+fn get_image_from_url(url: &str) -> Result<Vec<u8>, attohttpc::Error> {
+    let response = attohttpc::get(url).send().map_err(|_| {
+        eprintln!("Error");
+        exit(1);
+    });
+    let data = response.expect("Failed to get image from url").bytes()?;
+    Ok(data)
+}
+
+fn read_image(image_uri: &str) -> Result<DynamicImage, ImageError> {
+    if image_uri.starts_with("http:") || image_uri.starts_with("https:") {
+        let bytes = get_image_from_url(image_uri).map_err(|_| {
+                eprintln!("Error");
+                exit(1);
+            }
+        );
+        let img = ImageReader::new(Cursor::new(bytes.unwrap()))
+            .with_guessed_format()?
+            .decode()?;
+        return Ok(img)
+    } else {
+        let img = ImageReader::open(image_uri)?.decode()?;
+        return Ok(img)
+    }
 }
 
 fn write_scheme_cache(cache_file_path: &Path, colorscheme: &Colorscheme) -> Result<(), ()> {
@@ -115,16 +137,16 @@ fn handle_paths() -> (PathBuf, PathBuf, PathBuf) {
 }
 
 fn main() -> Result<(), ()> {
-    let (conf, image_path) = Args::from_cli();
+    let (conf, image_uri) = Args::from_cli();
     let (config_path, templates_cache_path, colorschemes_cache_path) = handle_paths();
-    let hashed_image_path = hash_image_path(&image_path, &conf.saturation, &conf.method, &colorschemes_cache_path);
+    let hashed_image_uri = hash_image_uri(&image_uri, &conf.saturation, &conf.method, &colorschemes_cache_path);
     let colorscheme: Colorscheme;
 
-    if hashed_image_path.exists() {
-        colorscheme = read_scheme_cache(&hashed_image_path);
+    if hashed_image_uri.exists() {
+        colorscheme = read_scheme_cache(&hashed_image_uri);
     } else {
-        let img = read_image(&image_path).map_err(|_| {
-            eprintln!("Error: could not open image '{}'", image_path.display());
+        let img = read_image(&image_uri).map_err(|_| {
+            eprintln!("Error: could not find image '{}'", image_uri);
             exit(1)
         })?;
         
@@ -134,7 +156,7 @@ fn main() -> Result<(), ()> {
             Method::ANSI        => ansi_generate_colorscheme(&img).with_saturation(conf.saturation),
         };
 
-        let _ = write_scheme_cache(&hashed_image_path, &colorscheme).map_err(|_| {
+        let _ = write_scheme_cache(&hashed_image_uri, &colorscheme).map_err(|_| {
             eprint!("Warning: failed to cache colorscheme");
         });
     }
